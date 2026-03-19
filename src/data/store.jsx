@@ -10,7 +10,7 @@ import {
 // ============================================================
 // Local Storage helpers
 // ============================================================
-const STORAGE_KEY = "nganga-wa-muchai-data";
+const STORAGE_KEY = "nganga-wa-muchai-v2";
 
 function loadFromStorage() {
   try {
