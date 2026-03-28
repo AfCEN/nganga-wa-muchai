@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, X, BookOpen, ChevronRight, MapPin, User, Tag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, X, BookOpen, ChevronRight, MapPin, User, Tag, Trash2 } from 'lucide-react';
 import { useFamilyStore } from '../data/store';
+import { useAuth } from '../data/auth';
+import { useToast } from './Toast';
 
 function TrailViewer({ trail, stories, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -182,8 +184,11 @@ function TrailViewer({ trail, stories, onClose }) {
 }
 
 export default function StoryTrails() {
-  const { storyTrails, stories } = useFamilyStore();
+  const { storyTrails, stories, deleteStoryTrail } = useFamilyStore();
+  const { isAuthenticated } = useAuth();
+  const toast = useToast();
   const [activeTrail, setActiveTrail] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const getTrailStories = (trail) =>
     (trail.storyIds || [])
@@ -220,40 +225,69 @@ export default function StoryTrails() {
             const trailStories = getTrailStories(trail);
 
             return (
-              <button
-                key={trail.id}
-                onClick={() => setActiveTrail(trail)}
-                className="group text-left bg-[#1a1a2e]/80 border border-[#e2c275]/10 rounded-2xl p-6 hover:border-[#e2c275]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#e2c275]/5"
-              >
-                {/* Icon */}
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#e2c275]/20 to-[#e2c275]/5 border border-[#e2c275]/15 flex items-center justify-center mb-4 group-hover:from-[#e2c275]/30 transition-all">
-                  <BookOpen size={20} className="text-[#e2c275]" />
-                </div>
+              <div key={trail.id} className="group relative bg-[#1a1a2e]/80 border border-[#e2c275]/10 rounded-2xl p-6 hover:border-[#e2c275]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#e2c275]/5">
+                {/* Delete button */}
+                {isAuthenticated && confirmDeleteId !== trail.id && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(trail.id); }}
+                    className="absolute top-4 right-4 p-1.5 text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete trail"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
 
-                {/* Title */}
-                <h3
-                  className="text-xl text-white group-hover:text-[#e2c275] transition-colors mb-2"
-                  style={{ fontFamily: 'Playfair Display, serif' }}
-                >
-                  {trail.title}
-                </h3>
+                {confirmDeleteId === trail.id ? (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <p className="text-sm text-red-300 mb-3">Delete "{trail.title}"?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try { await deleteStoryTrail(trail.id); toast.success('Trail deleted'); }
+                          catch { toast.error('Failed to delete'); }
+                          setConfirmDeleteId(null);
+                        }}
+                        className="flex-1 py-2 bg-red-500/70 text-white rounded-lg text-sm hover:bg-red-500"
+                      >Yes, delete</button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 py-2 text-sm text-gray-400 border border-white/10 rounded-lg"
+                      >Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div onClick={() => setActiveTrail(trail)} className="cursor-pointer">
+                    {/* Icon */}
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#e2c275]/20 to-[#e2c275]/5 border border-[#e2c275]/15 flex items-center justify-center mb-4 group-hover:from-[#e2c275]/30 transition-all">
+                      <BookOpen size={20} className="text-[#e2c275]" />
+                    </div>
 
-                {/* Description */}
-                <p className="text-sm text-gray-400 leading-relaxed mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  {trail.description}
-                </p>
+                    {/* Title */}
+                    <h3
+                      className="text-xl text-white group-hover:text-[#e2c275] transition-colors mb-2"
+                      style={{ fontFamily: 'Playfair Display, serif' }}
+                    >
+                      {trail.title}
+                    </h3>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                  <span className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    {trailStories.length} {trailStories.length === 1 ? 'story' : 'stories'}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-[#e2c275]/70 group-hover:text-[#e2c275] transition-colors">
-                    Begin trail
-                    <ChevronRight size={14} />
-                  </span>
-                </div>
-              </button>
+                    {/* Description */}
+                    <p className="text-sm text-gray-400 leading-relaxed mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      {trail.description}
+                    </p>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <span className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {trailStories.length} {trailStories.length === 1 ? 'story' : 'stories'}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-[#e2c275]/70 group-hover:text-[#e2c275] transition-colors">
+                        Begin trail
+                        <ChevronRight size={14} />
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

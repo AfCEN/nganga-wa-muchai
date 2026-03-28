@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Users, BookOpen, GitBranch, Plus } from 'lucide-react';
+import { Menu, X, Users, BookOpen, GitBranch, Plus, LogOut, LogIn, UserPlus, Copy, Check } from 'lucide-react';
 import { useFamilyStore } from '../data/store';
+import { useAuth } from '../data/auth';
+import { api } from '../data/api';
+import { useToast } from './Toast';
 
 const navLinks = [
   { to: '/', label: 'Graph', icon: GitBranch },
@@ -14,6 +17,22 @@ export default function Navbar({ onContributeClick }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { people, stories, connections } = useFamilyStore();
+  const { user, isAuthenticated, logout } = useAuth();
+  const toast = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleInvite = async () => {
+    try {
+      const invite = await api.post('/api/auth/invites', {});
+      const link = `${window.location.origin}/join?code=${invite.code}`;
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success('Invite link copied to clipboard! Share it with a family member.');
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      toast.error('Failed to create invite link');
+    }
+  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -79,6 +98,37 @@ export default function Navbar({ onContributeClick }) {
               <Plus size={16} />
               Contribute
             </button>
+
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-300" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  {user?.displayName}
+                </span>
+                <button
+                  onClick={handleInvite}
+                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-400 hover:text-[#e2c275] transition-colors rounded-lg hover:bg-white/5"
+                  title={copied ? 'Invite link copied!' : 'Invite a family member'}
+                >
+                  {copied ? <Check size={15} className="text-green-400" /> : <UserPlus size={15} />}
+                </button>
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-400 hover:text-[#e2c275] transition-colors rounded-lg hover:bg-white/5"
+                  title="Sign out"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-[#e2c275] transition-colors rounded-lg hover:bg-white/5"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <LogIn size={15} />
+                Sign in
+              </Link>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -130,6 +180,26 @@ export default function Navbar({ onContributeClick }) {
               <Plus size={16} />
               Contribute
             </button>
+
+            {isAuthenticated ? (
+              <div className="flex items-center justify-between px-4 py-2 mt-2">
+                <span className="text-sm text-gray-300">{user?.displayName}</span>
+                <button
+                  onClick={() => { setMobileOpen(false); logout(); }}
+                  className="text-sm text-gray-400 hover:text-[#e2c275] transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block text-center px-4 py-3 mt-2 text-sm text-[#e2c275] hover:text-[#f0d68a] transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       )}

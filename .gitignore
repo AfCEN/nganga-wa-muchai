@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 .env.local
+server/venv/
+server/.env
+__pycache__/
+server/uploads/
+.claude/
+.railway.toml

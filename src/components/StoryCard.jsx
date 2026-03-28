@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { X, Calendar, User, Tag, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Calendar, User, Tag, Users, Trash2 } from 'lucide-react';
 import { useFamilyStore } from '../data/store';
+import { useAuth } from '../data/auth';
+import { useToast } from './Toast';
 
 const TYPE_STYLES = {
   memory: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
@@ -11,7 +14,11 @@ const TYPE_STYLES = {
 
 export default function StoryCard({ story }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { getPersonById } = useFamilyStore();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { getPersonById, deleteStory } = useFamilyStore();
+  const { isAuthenticated } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const linkedPeople = (story.personIds || [])
     .map((id) => getPersonById(id))
@@ -138,13 +145,54 @@ export default function StoryCard({ story }) {
                   {story.title}
                 </h2>
               </div>
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/20 transition-all shrink-0 ml-4"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex gap-2 shrink-0 ml-4">
+                {isAuthenticated && (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-red-400 hover:border-red-400/30 transition-all"
+                    title="Delete story"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+                <button
+                  onClick={() => { setIsExpanded(false); setConfirmDelete(false); }}
+                  className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/20 transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
+
+            {/* Delete confirmation */}
+            {confirmDelete && (
+              <div className="mx-6 mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <p className="text-sm text-red-300 mb-3">Delete "<strong>{story.title}</strong>"? This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteStory(story.id);
+                        toast.success('Story deleted');
+                        setIsExpanded(false);
+                        setConfirmDelete(false);
+                      } catch (err) {
+                        toast.error(err.message || 'Failed to delete');
+                      }
+                    }}
+                    className="flex-1 py-2 bg-red-500/80 text-white rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
+                  >
+                    Yes, delete
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="flex-1 py-2 text-sm text-gray-400 border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Modal body */}
             <div className="px-6 py-5">
@@ -197,19 +245,20 @@ export default function StoryCard({ story }) {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {linkedPeople.map((person) => (
-                      <div
+                      <button
                         key={person.id}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5"
+                        onClick={() => navigate(`/?person=${person.id}`)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 hover:bg-[#e2c275]/10 hover:border-[#e2c275]/20 transition-colors cursor-pointer"
                       >
                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#e2c275]/40 to-[#e2c275]/15 flex items-center justify-center">
                           <span className="text-[8px] text-[#e2c275] font-bold">
                             {getInitials(person.name)}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-300" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <span className="text-sm text-gray-300 hover:text-[#e2c275] transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {person.name}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

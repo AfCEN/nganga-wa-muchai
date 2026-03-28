@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Calendar, Users, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Filter, Calendar, Users, ChevronDown, Trash2 } from 'lucide-react';
 import { useFamilyStore } from '../data/store';
+import { useAuth } from '../data/auth';
+import { useToast } from './Toast';
 
 const EVENT_TYPE_COLORS = {
   birth: '#6b8f71',
@@ -13,7 +16,11 @@ const EVENT_TYPE_COLORS = {
 };
 
 export default function Timeline() {
-  const { events, people, getPersonById } = useFamilyStore();
+  const { events, people, getPersonById, deleteEvent } = useFamilyStore();
+  const { isAuthenticated } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [filterPerson, setFilterPerson] = useState('');
   const [filterType, setFilterType] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -212,15 +219,45 @@ export default function Timeline() {
                       {eventPeople.length > 0 && (
                         <div className={`flex flex-wrap gap-1.5 mt-3 ${isLeft ? 'sm:justify-end' : ''}`}>
                           {eventPeople.map((person) => (
-                            <span
+                            <button
                               key={person.id}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-gray-400"
+                              onClick={() => navigate(`/?person=${person.id}`)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-gray-400 hover:bg-[#e2c275]/10 hover:text-[#e2c275] transition-colors cursor-pointer"
                               style={{ fontFamily: 'Inter, sans-serif' }}
                             >
                               <Users size={10} className="text-[#e2c275]/50" />
                               {person.name}
-                            </span>
+                            </button>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Delete */}
+                      {isAuthenticated && confirmDeleteId !== event.id && (
+                        <button
+                          onClick={() => setConfirmDeleteId(event.id)}
+                          className={`mt-3 flex items-center gap-1 text-[11px] text-gray-600 hover:text-red-400 transition-colors ${isLeft ? 'sm:ml-auto' : ''}`}
+                        >
+                          <Trash2 size={12} /> Remove
+                        </button>
+                      )}
+                      {confirmDeleteId === event.id && (
+                        <div className="mt-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <p className="text-[11px] text-red-300 mb-2">Delete this event?</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try { await deleteEvent(event.id); toast.success('Event deleted'); }
+                                catch { toast.error('Failed to delete'); }
+                                setConfirmDeleteId(null);
+                              }}
+                              className="px-3 py-1 text-[11px] bg-red-500/70 text-white rounded-md hover:bg-red-500"
+                            >Yes</button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-3 py-1 text-[11px] text-gray-400 border border-white/10 rounded-md"
+                            >No</button>
+                          </div>
                         </div>
                       )}
                     </div>
